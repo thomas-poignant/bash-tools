@@ -1,18 +1,19 @@
 #!/bin/bash
 
-#DOC : get a formated date
+#DOC : Cette fonction retourne la date formatée
 function getDate {
 	echo $(date +"%d-%m-%Y %H:%M:%S")
 }
 
-#DOC : exit the script in 127 if precedent command failed
+#DOC : Cette fonction va nous faire sortir du script en erreur 127 dans le
+#      cas ou la fonction précédente ne s'est pas correctement déroulée
 function assert {
 	if [ "$?" -ne "0" ] ; then
 		exit 127
 	fi
 }
 
-#DOC : Check if ENV variable is empty
+#DOC : Cette fonction regarde si la variable est vide ou non
 function isEmpty {
 	if [ "$1" == "" ];
 	then
@@ -22,7 +23,7 @@ function isEmpty {
 	fi
 }
 
-#DOC: write a log message
+#DOC: fonction qui permet de logger
 function log {
 	LOG_MESSAGE=$1
 	if ! isEmpty $LOG_MESSAGE;
@@ -33,21 +34,21 @@ function log {
 	fi
 }
 
-#DOC: Add an error prefix to the log
+#DOC: fonction qui permet de logger une erreur
 function log_error
 {
 	LOG_MESSAGE="ERROR : $1"
 	log "$LOG_MESSAGE"
 }
 
-#DOC: Add a warn prefix to the log
+#DOC: fonction qui permet de logger un warn
 function log_warn
 {
 	LOG_MESSAGE="WARN : $1"
 	log "$LOG_MESSAGE"
 }
 
-#DOC: count the number of parameters in the scripts
+#DOC: fonction qui vérifie que le nombre de paramètre en entrée est bien le nombre attendu
 function countParam {
 	NB_PARAM_USED=$1
 	NB_PARAM_WANTED=$2
@@ -73,7 +74,7 @@ function countParam {
 }
 
 
-#DOC: Patch pattern in a file
+#DOC: Fonction qui patch un fichier
 function patchFile {
 	FILE=$1
 	PATTERN_TO_REPLACE=$2
@@ -83,11 +84,11 @@ function patchFile {
 		DELIMITER="%"
 	fi
 
-	log "    -> Replace \"$PATTERN_TO_REPLACE\" by \"$REPLACE_VALUE\" in the file: \"$FILE\""
+	log "    -> Remplacement de la chaine \"$PATTERN_TO_REPLACE\" par \"$REPLACE_VALUE\" dans le fichier \"$FILE\""
 	sed 's'$DELIMITER"$PATTERN_TO_REPLACE"$DELIMITER"$REPLACE_VALUE"$DELIMITER'g' $FILE >/tmp/$$ && sudo mv /tmp/$$ $FILE
 }
 
-#DOC:  Patch pattern in a folder
+#DOC: Fonction qui recherche tous les fichiers a patcher dans un répertoire et les patchs
 function patchFilesInFolder {
 	FOLDER=$1
 	PATTERN_TO_REPLACE=$2
@@ -99,9 +100,9 @@ function patchFilesInFolder {
 
 	if [ $NB_FILES -le 0 ]
 	then
-		log_warn "No file in folder $FOLDER with the pattern \"$PATTERN_TO_REPLACE\""
+		log_warn "Il n'y a aucun fichier dans le repertoire $FOLDER qui contient le pattern \"$PATTERN_TO_REPLACE\""
 	else
-		log "Replace \"$PATTERN_TO_REPLACE\" by \"$REPLACE_VALUE\" in folder \"$FOLDER\""
+		log "Remplacement de la chaine \"$PATTERN_TO_REPLACE\" par \"$REPLACE_VALUE\" dans les fichiers presents dans le repertoire \"$FOLDER\""
 		for CURRENT_FILE in $FILES
 		do
 			patchFile "$CURRENT_FILE" "$PATTERN_TO_REPLACE" "$REPLACE_VALUE" "$DELIMITER"; assert
@@ -109,38 +110,38 @@ function patchFilesInFolder {
 	fi
 }
 
-#DOC: Check if a file exist
+#DOC: Fonction qui test si un fichier existe
 function fileExists {
 	FILE=$1
 	if [ -f $FILE ];
 	then
-		log "File \"$FILE\" exist"
+		log "Le fichier \"$FILE\" existe"
 		return 0  # 0 = true
 	else
-		log "File \"$FILE\" doesn't exist"
+		log "Le fichier \"$FILE\" n'existe pas"
 		return 1  # 1 = false
 	fi
 }
 
-#DOC: Check if a folder exist
+#DOC: Fonction qui test si un repertoire existe
 function dirExists {
 	DIR=$1
 	if [ -d $DIR ];
 	then
-		log "Folder \"$DIR\" exist"
+		log "Le repertoire \"$DIR\" existe"
 		return 0  # 0 = true
 	else
-		log "Folder \"$DIR\" doesn't exist"
+		log "Le repertoire \"$DIR\" n'existe pas"
 		return 1  # 1 = false
 	fi
 }
 
-#DOC: Check if the symbolic link is correct
+#DOC: fonction qui vérifie un lien symbolique pour voir s'il correspond à l'URL attendu
 function checkSymbolicLink {
 	SYM_LINK=$1
 	WANTED_VALUE=$2
 	CURRENT_LINK=$(readlink $SYM_LINK)
-	log "    -> Symlink $SYM_LINK goes to \"$CURRENT_LINK\", wanted value: \"$WANTED_VALUE\""
+	log "    -> Nous regardons si le lien symbolique $SYM_LINK qui pointe vers \"$CURRENT_LINK\" a la valeur souhaitee \"$WANTED_VALUE\""
 	if [ "$CURRENT_LINK" == "$WANTED_VALUE" ];
 	then
 		return 0 # 0 = true
@@ -149,26 +150,88 @@ function checkSymbolicLink {
 	fi
 }
 
-#DOC: Create a symlink
+#DOC: Fonction qui créer un lien symbolique
 function createSymbolicLink {
 	SOURCE=$1
 	DESTINATION=$2
 
 	if checkSymbolicLink $DESTINATION $SOURCE;
 	then
-		log "    -> Symlink \"$DESTINATION\" goes to \"$SOURCE\"already exist"
+		log "    -> Le lien symbolique \"$DESTINATION\" qui pointe sur le fichier \"$SOURCE\" existe deja"
 	else
-		log "    -> Create symlink \"$DESTINATION\" goes to \"$SOURCE\""
+		log "    -> Creation du lien symbolique \"$DESTINATION\" qui pointe sur le fichier \"$SOURCE\""
 		sudo ln -s $SOURCE $DESTINATION
 	fi
 }
 
-#DOC: Create a folder if doesn't exist
+#DOC: fonction qui créer un répertoire s'il n'existe pas
 function createFolderIfNotExist {
 	FOLDER=$1
 	if ! dirExists $FOLDER ;
 	then
-		log "Creation of $FOLDER"
+		log "Creation du repertoire $FOLDER"
 		mkdir -p $FOLDER
 	fi
 }
+
+#DOC: fonction qui patch partiellement une ligne qui contient un pattern dans un dossier
+function patchLinesInFolder {
+	if ! countParam $# 3 5
+	then
+		log_error " -> [patchLinesInFolder] Nombre d'arguments invalide:"
+		log_error "       1) FOLDER: \"$1\""
+		log_error "       2) SEARCH_PATTERN \"$2\""
+		log_error "       3) REPLACEMENT \"$3\""
+		log_error "       4) [AFTER \"$4\"]"
+		log_error "       5) [BEFORE \"$5\"]"
+	else
+		FOLDER=$1
+		SEARCH_PATTERN=$2
+		REPLACEMENT=$3
+		AFTER=$4
+		BEFORE=$5
+	
+		FILES=$(grep -l -R "$SEARCH_PATTERN" "$FOLDER/"*)
+		NB_FILES=$(echo $FILES | wc -w)
+		
+		if [ $NB_FILES -le 0 ]
+		then
+			log_warn "Il n'y a aucun fichier dans le repertoire $FOLDER qui contient le pattern \"$SEARCH_PATTERN\""
+		else
+			for CURRENT_FILE in $FILES
+			do
+				patchLines "$CURRENT_FILE" "$SEARCH_PATTERN" "$REPLACEMENT" "$AFTER" "$BEFORE"
+			done
+		fi
+	fi
+}
+
+#DOC: fonction qui patch partiellement une ligne qui contient un pattern dans un fichier
+function patchLines
+{
+	if ! countParam $# 3 5
+	then
+		log_error " -> [patchLines] Nombre d'arguments invalide:"
+		log_error "       1) FILE: \"$1\""
+		log_error "       2) SEARCH_PATTERN \"$2\""
+		log_error "       3) REPLACEMENT \"$3\""
+		log_error "       4) [AFTER \"$4\"]"
+		log_error "       5) [BEFORE \"$5\"]"
+	else
+		FILE=$1
+		SEARCH_PATTERN=$2
+		REPLACEMENT=$3
+		AFTER=$4
+		BEFORE=$5
+		
+		if [ ! -z "$AFTER" ]; then
+			REPLACEMENT="$AFTER $REPLACEMENT"
+		fi
+		if [ ! -z "$BEFORE" ]; then
+			REPLACEMENT="$REPLACEMENT $BEFORE"
+		fi
+		
+		patchFile "$FILE" "$AFTER.*$BEFORE.*$SEARCH_PATTERN.*" "$REPLACEMENT" "/"; assert
+	fi
+}
+
